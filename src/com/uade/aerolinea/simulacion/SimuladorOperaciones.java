@@ -341,7 +341,15 @@ public class SimuladorOperaciones {
             System.out.println(" 0) Salir");
             System.out.print("Opción: ");
 
-            int op = sc.nextInt(); sc.nextLine();
+            int op;
+            if (sc.hasNextInt()) {
+                op = sc.nextInt(); sc.nextLine();
+            } else {
+                System.out.println("Entrada inválida. Por favor ingrese un número.");
+                sc.nextLine(); // limpiar buffer
+                continue;      // volver al menú
+            }
+
             switch (op) {
                 case 1:
                     System.out.print("Matrícula: ");
@@ -410,9 +418,15 @@ public class SimuladorOperaciones {
                     reportarAeropuertosConMasConexiones();
                     break;
                 case 14:
-                    System.out.print("ID vuelo pendiente: ");
-                    asignarAvionAStandby(sc.nextInt());
-                    sc.nextLine();
+                    System.out.print("ID vuelo pendiente (0 a " + (maxVuelos - 1) + "): ");
+                    if (sc.hasNextInt()) {
+                        int id = sc.nextInt();
+                        sc.nextLine();
+                        asignarAvionAStandby(id);
+                    } else {
+                        System.out.println("Entrada inválida. Por favor ingrese un número.");
+                        sc.nextLine(); // limpiar buffer
+                    }
                     break;
                 case 0:
                     System.out.println("¡Hasta luego!");
