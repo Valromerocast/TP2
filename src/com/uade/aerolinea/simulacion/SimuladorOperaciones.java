@@ -11,50 +11,41 @@ public class SimuladorOperaciones {
 
     private int maxVuelos;
     private boolean[] vueloActivo;
-    private String[] origenVuelo;
-    private String[] destinoVuelo;
+    private String[] origenVuelo, destinoVuelo;
     private int[][] contadorRutas;
 
-    /**
-     * @param capacidadAeropuertos máximo de aeropuertos (p.ej. 20)
-     * @param capacidadVuelos      máximo de vuelos (p.ej. 50)
-     * @param capacidadAviones     máximo de aviones (p.ej. 10)
-     */
-    public SimuladorOperaciones(int capacidadAeropuertos,
-                                int capacidadVuelos,
-                                int capacidadAviones) {
-        this.planificador   = new PlanificadorRutas(capacidadAeropuertos);
-        this.gestorFlota    = new GestorFlota(capacidadAviones, capacidadVuelos);
-        this.maxVuelos      = capacidadVuelos;
+    public SimuladorOperaciones(int capAeropuertos,
+                                int capVuelos,
+                                int capAviones) {
+        this.planificador  = new PlanificadorRutas(capAeropuertos);
+        this.gestorFlota   = new GestorFlota(capAviones, capVuelos);
+        this.maxVuelos     = capVuelos;
 
-        this.vueloActivo    = new boolean[capacidadVuelos];
-        this.origenVuelo    = new String[capacidadVuelos];
-        this.destinoVuelo   = new String[capacidadVuelos];
-        for (int v = 0; v < capacidadVuelos; v++) {
-            vueloActivo[v] = false;
-        }
+        this.vueloActivo   = new boolean[capVuelos];
+        this.origenVuelo   = new String[capVuelos];
+        this.destinoVuelo  = new String[capVuelos];
+        for (int i = 0; i < capVuelos; i++) vueloActivo[i] = false;
 
-        this.contadorRutas  = new int[capacidadAeropuertos][capacidadAeropuertos];
+        this.contadorRutas = new int[capAeropuertos][capAeropuertos];
 
-        cargarAeropuertosIniciales();   // 15 aeropuertos
-        cargarFlotaInicial();           // 10 aviones
-        cargarVuelosIniciales();        // 50 vuelos planificados
+        cargarAeropuertosIniciales();
+        cargarFlotaInicial();
+        cargarVuelosIniciales();
     }
 
-    /** Carga los 15 aeropuertos predefinidos */
     private void cargarAeropuertosIniciales() {
-        String[] codigos = {
+        String[] cod = {
                 "ATL","PEK","LHR","CDG","HND",
                 "DXB","LAX","SIN","FRA","AMS",
                 "GRU","SYD","JFK","ICN","MAD"
         };
-        String[] descripciones = {
+        String[] des = {
                 "Hartsfield-Jackson Atlanta Intl. (EE. UU.)",
                 "Beijing Capital Intl. (China)",
                 "London Heathrow (Reino Unido)",
                 "Charles de Gaulle (Francia)",
                 "Tokyo Haneda (Japón)",
-                "Dubai International (Emiratos Árabes Unidos)",
+                "Dubai International (EAU)",
                 "Los Angeles Intl. (EE. UU.)",
                 "Singapore Changi (Singapur)",
                 "Frankfurt am Main (Alemania)",
@@ -65,56 +56,64 @@ public class SimuladorOperaciones {
                 "Incheon Intl. (Corea del Sur)",
                 "Adolfo Suárez Madrid–Barajas (España)"
         };
-        for (int i = 0; i < codigos.length; i++) {
-            planificador.agregarAeropuerto(codigos[i], descripciones[i]);
+        for (int i = 0; i < cod.length; i++) {
+            planificador.agregarAeropuerto(cod[i], des[i]);
         }
     }
 
-    /** Carga una flota inicial de 10 aviones de muestra */
     private void cargarFlotaInicial() {
-        String[] matriculas = {
+        String[] mat = {
                 "AA101","BB202","CC303","DD404","EE505",
                 "FF606","GG707","HH808","II909","JJ010"
         };
-        String[] tipos = {
+        String[] tip = {
                 "Boeing 737","Airbus A320","Boeing 777","Embraer 190","Airbus A330",
                 "Boeing 747","Airbus A350","Boeing 787","Embraer 175","Bombardier CRJ"
         };
-        for (int i = 0; i < matriculas.length; i++) {
-            gestorFlota.agregarAvion(matriculas[i], tipos[i]);
+        for (int i = 0; i < mat.length; i++) {
+            gestorFlota.agregarAvion(mat[i], tip[i]);
         }
     }
 
-    /** Planifica 50 vuelos iniciales (carga, internacional, nacional) */
     private void cargarVuelosIniciales() {
         int nAer = planificador.getNumeroAeropuertos();
+        int nAv  = gestorFlota.getNumeroAviones();
         for (int id = 0; id < maxVuelos; id++) {
-            String origen  = planificador.getCodigoAeropuerto(id % nAer);
-            String destino = planificador.getCodigoAeropuerto((id + 1) % nAer);
-            String tipo;
-            switch (id % 3) {
-                case 0: tipo = "Carga"; break;
-                case 1: tipo = "Internacional"; break;
-                default: tipo = "Nacional";
+            String ori = planificador.getCodigoAeropuerto(id % nAer);
+            String dst = planificador.getCodigoAeropuerto((id + 1) % nAer);
+
+            // Asegurar la ruta en el grafo
+            planificador.agregarRuta(ori, dst, 1);
+
+            // Registrar vuelo y contar ruta
+            origenVuelo[id]  = ori;
+            destinoVuelo[id] = dst;
+            vueloActivo[id]  = true;
+            int io  = planificador.buscarIdAeropuerto(ori);
+            int idd = planificador.buscarIdAeropuerto(dst);
+            if (io >= 0 && idd >= 0) contadorRutas[io][idd]++;
+
+            // Asignar avión solo a los primeros nAv vuelos
+            if (id < nAv) {
+                gestorFlota.asignarAvion(id);
             }
-            agregarNuevoVuelo(id, origen, destino, tipo);
         }
     }
 
-    /** Agrega un nuevo avión a la flota */
     public void agregarNuevoAvion(String matricula, String tipo) {
         gestorFlota.agregarAvion(matricula, tipo);
     }
 
-    /** Agrega una nueva ruta posible (no modifica vuelos ya planeados) */
     public void agregarNuevaRuta(String origen, String destino, int peso) {
         planificador.agregarAeropuerto(origen, "");
         planificador.agregarAeropuerto(destino, "");
         planificador.agregarRuta(origen, destino, peso);
     }
 
-    /** Planifica un nuevo vuelo, asigna avión y cuenta la ruta */
-    public void agregarNuevoVuelo(int idVuelo, String origen, String destino, String tipoVuelo) {
+    public void agregarNuevoVuelo(int idVuelo,
+                                  String origen,
+                                  String destino,
+                                  String tipoVuelo) {
         if (idVuelo < 0 || idVuelo >= maxVuelos) {
             System.out.println("ID de vuelo inválido: " + idVuelo);
             return;
@@ -125,16 +124,15 @@ public class SimuladorOperaciones {
 
         planificador.agregarAeropuerto(origen, "");
         planificador.agregarAeropuerto(destino, "");
-        gestorFlota.asignarAvion(idVuelo);
+        planificador.agregarRuta(origen, destino, 1);
 
-        int idO = planificador.buscarIdAeropuerto(origen);
-        int idD = planificador.buscarIdAeropuerto(destino);
-        if (idO >= 0 && idD >= 0) {
-            contadorRutas[idO][idD]++;
-        }
+        int io  = planificador.buscarIdAeropuerto(origen);
+        int idd = planificador.buscarIdAeropuerto(destino);
+        if (io >= 0 && idd >= 0) contadorRutas[io][idd]++;
+
+        gestorFlota.asignarAvion(idVuelo);
     }
 
-    /** Cancela un vuelo activo: libera avión y ajusta contadores */
     public void cancelarVuelo(int idVuelo) {
         if (idVuelo < 0 || idVuelo >= maxVuelos || !vueloActivo[idVuelo]) {
             System.out.println("Vuelo inválido o no activo: " + idVuelo);
@@ -143,67 +141,92 @@ public class SimuladorOperaciones {
         vueloActivo[idVuelo] = false;
         gestorFlota.liberarAvion(idVuelo);
 
-        int idO = planificador.buscarIdAeropuerto(origenVuelo[idVuelo]);
-        int idD = planificador.buscarIdAeropuerto(destinoVuelo[idVuelo]);
-        if (idO >= 0 && idD >= 0) {
-            contadorRutas[idO][idD]--;
-        }
+        int io  = planificador.buscarIdAeropuerto(origenVuelo[idVuelo]);
+        int idd = planificador.buscarIdAeropuerto(destinoVuelo[idVuelo]);
+        if (io >= 0 && idd >= 0) contadorRutas[io][idd]--;
     }
 
-    /** Reprograma un vuelo activo: cambia ruta y ajusta contadores */
-    public void reprogramarVuelo(int idVuelo, String nuevoOrigen, String nuevoDestino) {
+    public void reprogramarVuelo(int idVuelo,
+                                 String nuevoOrigen,
+                                 String nuevoDestino) {
         if (idVuelo < 0 || idVuelo >= maxVuelos || !vueloActivo[idVuelo]) {
             System.out.println("Vuelo inválido o no activo: " + idVuelo);
             return;
         }
-        int antiguoO = planificador.buscarIdAeropuerto(origenVuelo[idVuelo]);
-        int antiguoD = planificador.buscarIdAeropuerto(destinoVuelo[idVuelo]);
-        if (antiguoO >= 0 && antiguoD >= 0) {
-            contadorRutas[antiguoO][antiguoD]--;
-        }
+        int aO = planificador.buscarIdAeropuerto(origenVuelo[idVuelo]);
+        int aD = planificador.buscarIdAeropuerto(destinoVuelo[idVuelo]);
+        if (aO >= 0 && aD >= 0) contadorRutas[aO][aD]--;
 
         origenVuelo[idVuelo]  = nuevoOrigen;
         destinoVuelo[idVuelo] = nuevoDestino;
-
         planificador.agregarAeropuerto(nuevoOrigen, "");
         planificador.agregarAeropuerto(nuevoDestino, "");
-        planificador.agregarRuta(nuevoOrigen, nuevoDestino, 0);
+        planificador.agregarRuta(nuevoOrigen, nuevoDestino, 1);
 
-        int idO = planificador.buscarIdAeropuerto(nuevoOrigen);
-        int idD = planificador.buscarIdAeropuerto(nuevoDestino);
-        if (idO >= 0 && idD >= 0) {
-            contadorRutas[idO][idD]++;
-        }
+        int io  = planificador.buscarIdAeropuerto(nuevoOrigen);
+        int idd = planificador.buscarIdAeropuerto(nuevoDestino);
+        if (io >= 0 && idd >= 0) contadorRutas[io][idd]++;
         System.out.println("Vuelo " + idVuelo +
-                " reprogramado a: " + nuevoOrigen + "→" + nuevoDestino);
+                " reprogramado: " + nuevoOrigen + "→" + nuevoDestino);
     }
 
-    /** Muestra aeropuertos desconectados tras las operaciones */
-    public void analizarImpactoConectividad() {
-        System.out.println("=== Aeropuertos desconectados tras simulación ===");
+    public void determinarRutasPosibles() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Origen: ");
+        String o = sc.nextLine().trim();
+        System.out.print("Destino: ");
+        String d = sc.nextLine().trim();
+        System.out.print("Máx. escalas: ");
+        int e = sc.nextInt(); sc.nextLine();
+        planificador.imprimirRutas(o, d, e);
+    }
+
+    public void identificarAeropuertosDesconectados() {
+        System.out.println("=== Aeropuertos desconectados ===");
         planificador.imprimirAeropuertosDesconectados();
     }
 
-    /** Reporte: utilización promedio de la flota */
-    public void generarReporteUtilizacionPromedio() {
-        int totalAsignaciones = 0;
-        int nAviones = gestorFlota.getNumeroAviones();
-        for (int i = 0; i < nAviones; i++) {
-            totalAsignaciones += gestorFlota.getContadorAsignaciones(i);
-        }
-        double promedio = nAviones > 0
-                ? (double) totalAsignaciones / nAviones
-                : 0.0;
-        System.out.println("Utilización promedio de aviones: " + promedio);
+    public void mostrarAvionesConMasAsignaciones() {
+        System.out.println("=== Aviones con más asignaciones ===");
+        gestorFlota.imprimirAvionesConMasAsignaciones();
     }
 
-    /** Reporte: rutas más frecuentes y menos utilizadas */
+    /**
+     * Opción 9: libera el avión asignado al vuelo y
+     * permite cancelar o reasignar inmediatamente.
+     */
+    public void liberarOReasignarAvion(int idVuelo) {
+        gestorFlota.liberarAvion(idVuelo);
+        Scanner sc = new Scanner(System.in);
+        System.out.print("¿Cancelar vuelo " + idVuelo + "? (s/n): ");
+        String resp = sc.nextLine().trim().toLowerCase();
+        if (resp.startsWith("s")) {
+            cancelarVuelo(idVuelo);
+            return;
+        }
+        System.out.print("¿Reasignar otro avión? (s/n): ");
+        resp = sc.nextLine().trim().toLowerCase();
+        if (resp.startsWith("s")) {
+            gestorFlota.asignarAvion(idVuelo);
+        }
+    }
+
+    public void asignarAvionAStandby(int idVuelo) {
+        gestorFlota.asignarAvion(idVuelo);
+    }
+
+    public void generarReporteUtilizacionPromedio() {
+        int total = 0, n = gestorFlota.getNumeroAviones();
+        for (int i = 0; i < n; i++) {
+            total += gestorFlota.getContadorAsignaciones(i);
+        }
+        double prom = n > 0 ? (double) total / n : 0.0;
+        System.out.println("Utilización promedio de aviones: " + prom);
+    }
+
     public void generarReporteConexionesFrecuentesYMenos() {
         int n = planificador.getNumeroAeropuertos();
-        int max = 0;
-        int min = Integer.MAX_VALUE;
-
-        // hallar max y min (>0)
+        int max = 0, min = Integer.MAX_VALUE;
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
                 int c = contadorRutas[i][j];
@@ -211,15 +234,13 @@ public class SimuladorOperaciones {
                 if (c > 0 && c < min) min = c;
             }
         }
-
         if (max > 0) {
-            System.out.println("=== Rutas más frecuentes (" + max + " vuelos) ===");
+            System.out.println("=== Rutas más frecuentes (" + max + ") ===");
             for (int i = 0; i < n; i++) {
                 for (int j = 0; j < n; j++) {
                     if (contadorRutas[i][j] == max) {
                         System.out.println("- " +
-                                planificador.getCodigoAeropuerto(i) +
-                                "→" +
+                                planificador.getCodigoAeropuerto(i) + "→" +
                                 planificador.getCodigoAeropuerto(j));
                     }
                 }
@@ -227,115 +248,105 @@ public class SimuladorOperaciones {
         } else {
             System.out.println("No hay vuelos registrados aún.");
         }
-
         if (min < Integer.MAX_VALUE) {
-            System.out.println("=== Rutas menos utilizadas (" + min + " vuelos) ===");
+            System.out.println("=== Rutas menos utilizadas (" + min + ") ===");
             for (int i = 0; i < n; i++) {
                 for (int j = 0; j < n; j++) {
                     if (contadorRutas[i][j] == min) {
                         System.out.println("- " +
-                                planificador.getCodigoAeropuerto(i) +
-                                "→" +
+                                planificador.getCodigoAeropuerto(i) + "→" +
                                 planificador.getCodigoAeropuerto(j));
                     }
                 }
             }
-        } else {
-            System.out.println("Todas las rutas existentes no han sido voladas aún.");
         }
     }
 
-    /** Reporte: aeropuertos con más vuelos entrantes y salientes */
     public void reportarEntrantesYSalientes() {
         int n = planificador.getNumeroAeropuertos();
-        int[] salientes = new int[n], entrantes = new int[n];
-
+        int[] sal = new int[n], ent = new int[n];
         for (int v = 0; v < maxVuelos; v++) {
             if (vueloActivo[v]) {
                 int o = planificador.buscarIdAeropuerto(origenVuelo[v]);
                 int d = planificador.buscarIdAeropuerto(destinoVuelo[v]);
-                if (o >= 0) salientes[o]++;
-                if (d >= 0) entrantes[d]++;
+                if (o >= 0) sal[o]++;
+                if (d >= 0) ent[d]++;
             }
         }
-
-        int maxSal = 0, maxEnt = 0;
+        int ms = 0, me = 0;
         for (int i = 0; i < n; i++) {
-            if (salientes[i] > maxSal) maxSal = salientes[i];
-            if (entrantes[i] > maxEnt) maxEnt = entrantes[i];
+            if (sal[i] > ms) ms = sal[i];
+            if (ent[i] > me) me = ent[i];
         }
-
-        System.out.println("=== Aeropuertos con más vuelos salientes (" + maxSal + ") ===");
-        for (int i = 0; i < n; i++) {
-            if (salientes[i] == maxSal) {
-                System.out.println("- " + planificador.getCodigoAeropuerto(i));
-            }
-        }
-
-        System.out.println("=== Aeropuertos con más vuelos entrantes (" + maxEnt + ") ===");
-        for (int i = 0; i < n; i++) {
-            if (entrantes[i] == maxEnt) {
-                System.out.println("- " + planificador.getCodigoAeropuerto(i));
-            }
-        }
+        System.out.println("=== Aeropuertos con más salientes (" + ms + ") ===");
+        for (int i = 0; i < n; i++) if (sal[i] == ms)
+            System.out.println("- " + planificador.getCodigoAeropuerto(i));
+        System.out.println("=== Aeropuertos con más entrantes (" + me + ") ===");
+        for (int i = 0; i < n; i++) if (ent[i] == me)
+            System.out.println("- " + planificador.getCodigoAeropuerto(i));
     }
 
-    /** Reporte: aeropuertos con más conexiones disponibles */
     public void reportarAeropuertosConMasConexiones() {
-        GraphADT grafo = planificador.getGrafo();
-        int n = planificador.getNumeroAeropuertos();
-        int maxCon = 0;
-
+        GraphADT g = planificador.getGrafo();
+        int n = planificador.getNumeroAeropuertos(), maxC = 0;
         for (int i = 0; i < n; i++) {
-            int cuenta = 0;
+            int cnt = 0;
             for (int j = 0; j < n; j++) {
-                if (grafo.existsEdge(i, j) || grafo.existsEdge(j, i)) {
-                    cuenta++;
-                }
+                if (g.existsEdge(i, j) || g.existsEdge(j, i)) cnt++;
             }
-            if (cuenta > maxCon) maxCon = cuenta;
+            if (cnt > maxC) maxC = cnt;
         }
-
-        System.out.println("=== Aeropuertos con más conexiones (" + maxCon + ") ===");
+        int iguales = 0;
         for (int i = 0; i < n; i++) {
-            int cuenta = 0;
+            int cnt = 0;
             for (int j = 0; j < n; j++) {
-                if (grafo.existsEdge(i, j) || grafo.existsEdge(j, i)) {
-                    cuenta++;
-                }
+                if (g.existsEdge(i, j) || g.existsEdge(j, i)) cnt++;
             }
-            if (cuenta == maxCon) {
-                System.out.println("- " + planificador.getCodigoAeropuerto(i));
+            if (cnt == maxC) iguales++;
+        }
+        if (iguales == n) {
+            System.out.println("Todos los aeropuertos tienen " + maxC + " conexiones.");
+        } else {
+            System.out.println("=== Aeropuertos con más conexiones (" + maxC + ") ===");
+            for (int i = 0; i < n; i++) {
+                int cnt = 0;
+                for (int j = 0; j < n; j++) {
+                    if (g.existsEdge(i, j) || g.existsEdge(j, i)) cnt++;
+                }
+                if (cnt == maxC) {
+                    System.out.println("- " + planificador.getCodigoAeropuerto(i));
+                }
             }
         }
     }
 
-    /** Menú interactivo de simulación y reportes */
     public void iniciarMenuSimulacion() {
         Scanner sc = new Scanner(System.in);
         while (true) {
-            System.out.println("\n=== SIMULADOR DE OPERACIONES Y REPORTES ===");
-            System.out.println("1) Agregar avión");
-            System.out.println("2) Agregar ruta");
-            System.out.println("3) Agregar vuelo");
-            System.out.println("4) Cancelar vuelo");
-            System.out.println("5) Reprogramar vuelo");
-            System.out.println("6) Analizar conectividad");
-            System.out.println("7) Informe: uso promedio de aviones");
-            System.out.println("8) Informe: rutas más/menos usadas");
-            System.out.println("9) Informe: aeropuertos entrantes/salientes");
-            System.out.println("10) Informe: aeropuertos con más conexiones");
-            System.out.println("0) Salir");
+            System.out.println("\n=== SIMULADOR DE OPERACIONES ===");
+            System.out.println(" 1) Agregar avión");
+            System.out.println(" 2) Agregar ruta");
+            System.out.println(" 3) Agregar vuelo");
+            System.out.println(" 4) Cancelar vuelo");
+            System.out.println(" 5) Reprogramar vuelo");
+            System.out.println(" 6) Determinar rutas posibles");
+            System.out.println(" 7) Aeropuertos desconectados");
+            System.out.println(" 8) Aviones con más asignaciones");
+            System.out.println(" 9) Liberar/reasignar avión de vuelo");
+            System.out.println("10) Uso promedio de aviones");
+            System.out.println("11) Rutas más/menos usadas");
+            System.out.println("12) Entrantes/salientes");
+            System.out.println("13) Conexiones disponibles");
+            System.out.println("14) Asignar avión a vuelo pendiente");
+            System.out.println(" 0) Salir");
             System.out.print("Opción: ");
 
-            int op = sc.nextInt();
-            sc.nextLine();
-
+            int op = sc.nextInt(); sc.nextLine();
             switch (op) {
                 case 1:
-                    System.out.print("Matrícula del avión: ");
+                    System.out.print("Matrícula: ");
                     String m = sc.nextLine().trim();
-                    System.out.print("Tipo de avión: ");
+                    System.out.print("Tipo: ");
                     String t = sc.nextLine().trim();
                     agregarNuevoAvion(m, t);
                     break;
@@ -344,27 +355,27 @@ public class SimuladorOperaciones {
                     String o2 = sc.nextLine().trim();
                     System.out.print("Destino: ");
                     String d2 = sc.nextLine().trim();
-                    System.out.print("Peso (distancia): ");
+                    System.out.print("Peso: ");
                     int p2 = sc.nextInt(); sc.nextLine();
                     agregarNuevaRuta(o2, d2, p2);
                     break;
                 case 3:
-                    System.out.print("ID de vuelo: ");
+                    System.out.print("ID vuelo: ");
                     int v3 = sc.nextInt(); sc.nextLine();
                     System.out.print("Origen: ");
                     String o3 = sc.nextLine().trim();
                     System.out.print("Destino: ");
                     String d3 = sc.nextLine().trim();
-                    System.out.print("Tipo (Carga/Internacional/Nacional): ");
-                    String t3 = sc.nextLine().trim();
-                    agregarNuevoVuelo(v3, o3, d3, t3);
+                    System.out.print("Tipo: ");
+                    String ty = sc.nextLine().trim();
+                    agregarNuevoVuelo(v3, o3, d3, ty);
                     break;
                 case 4:
-                    System.out.print("ID de vuelo a cancelar: ");
+                    System.out.print("ID a cancelar: ");
                     cancelarVuelo(sc.nextInt()); sc.nextLine();
                     break;
                 case 5:
-                    System.out.print("ID de vuelo a reprogramar: ");
+                    System.out.print("ID a reprogramar: ");
                     int vr = sc.nextInt(); sc.nextLine();
                     System.out.print("Nuevo origen: ");
                     String no = sc.nextLine().trim();
@@ -373,22 +384,38 @@ public class SimuladorOperaciones {
                     reprogramarVuelo(vr, no, nd);
                     break;
                 case 6:
-                    analizarImpactoConectividad();
+                    determinarRutasPosibles();
                     break;
                 case 7:
-                    generarReporteUtilizacionPromedio();
+                    identificarAeropuertosDesconectados();
                     break;
                 case 8:
-                    generarReporteConexionesFrecuentesYMenos();
+                    mostrarAvionesConMasAsignaciones();
                     break;
                 case 9:
-                    reportarEntrantesYSalientes();
+                    System.out.print("ID de vuelo: ");
+                    liberarOReasignarAvion(sc.nextInt());
+                    sc.nextLine();
                     break;
                 case 10:
+                    generarReporteUtilizacionPromedio();
+                    break;
+                case 11:
+                    generarReporteConexionesFrecuentesYMenos();
+                    break;
+                case 12:
+                    reportarEntrantesYSalientes();
+                    break;
+                case 13:
                     reportarAeropuertosConMasConexiones();
                     break;
+                case 14:
+                    System.out.print("ID vuelo pendiente: ");
+                    asignarAvionAStandby(sc.nextInt());
+                    sc.nextLine();
+                    break;
                 case 0:
-                    System.out.println("Cerrando simulador. ¡Hasta luego!");
+                    System.out.println("¡Hasta luego!");
                     sc.close();
                     return;
                 default:
