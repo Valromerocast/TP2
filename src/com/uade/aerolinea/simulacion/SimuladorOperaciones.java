@@ -87,6 +87,7 @@ public class SimuladorOperaciones {
     private void cargarVuelosIniciales() {
         int nAer = planificador.getNumeroAeropuertos();
         int nAv  = gestorFlota.getNumeroAviones();
+
         for (int id = 0; id < maxVuelos; id++) {
             String ori = planificador.getCodigoAeropuerto(id % nAer);
             String dst = planificador.getCodigoAeropuerto((id + 1) % nAer);
@@ -97,23 +98,21 @@ public class SimuladorOperaciones {
                 default -> tipo = "Nacional";
             }
 
-            // 1) Registrar en cola de prioridad
-            gestorPrioridad.registrarVuelo(id, ori, dst, tipo);
-
-            // 2) Planificar ruta y contar uso
+            // 1) Ruta en el grafo y conteo
             planificador.agregarRuta(ori, dst, 1);
             origenVuelo[id]  = ori;
             destinoVuelo[id] = dst;
             vueloActivo[id]  = true;
             int io  = planificador.buscarIdAeropuerto(ori);
             int idd = planificador.buscarIdAeropuerto(dst);
-            if (io >= 0 && idd >= 0) {
-                contadorRutas[io][idd]++;
-            }
+            if (io >= 0 && idd >= 0) contadorRutas[io][idd]++;
 
-            // 3) Asignar avión a los primeros nAv vuelos
             if (id < nAv) {
+                // 2a) A los primeros N vuelos les asigno avión y NO los pongo en la cola
                 gestorFlota.asignarAvion(id);
+            } else {
+                // 2b) A los restantes 40 los encolo en espera
+                gestorPrioridad.registrarVuelo(id, ori, dst, tipo);
             }
         }
     }
