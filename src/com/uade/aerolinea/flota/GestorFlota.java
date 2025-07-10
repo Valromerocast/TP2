@@ -32,15 +32,22 @@ public class GestorFlota {
         }
     }
 
-    /** Agrega un nuevo avión (matrícula + tipo) si no existe aún */
     public void agregarAvion(String matricula, String tipo) {
-        if (buscarIdAvion(matricula) < 0 && proximoIdAvion < matriculasAviones.length) {
-            int id = proximoIdAvion++;
-            matriculasAviones[id]    = matricula;
-            tiposAviones[id]         = tipo;
-            disponibles[id]          = true;
-            contadorAsignaciones[id] = 0;
+        // Verificar espacio en los arrays
+        if (proximoIdAvion >= matriculasAviones.length) {
+            System.out.println("Límite de aviones alcanzado.");
+            return;
         }
+        // Registrar matrícula y tipo
+        matriculasAviones[proximoIdAvion] = matricula;
+        tiposAviones[proximoIdAvion]      = tipo;
+        // Marcarlo como libre
+        disponibles[proximoIdAvion]       = true;
+        // Inicializar contador de asignaciones
+        contadorAsignaciones[proximoIdAvion] = 0;
+        // Avanzar índice de inserción
+        proximoIdAvion++;
+        System.out.println("Avión agregado: " + matricula + " (" + tipo + ")");
     }
 
     /** Devuelve el id interno de un avión según su matrícula, o -1 si no existe */
@@ -136,12 +143,29 @@ public class GestorFlota {
         }
     }
 
+    public boolean estaDisponible(int idAvion) {
+        if (idAvion < 0 || idAvion >= proximoIdAvion) return false;
+        return disponibles[idAvion];
+    }
+
+    /** Devuelve la matrícula del avión con índice dado */
+    public String getMatricula(int idAvion) {
+        if (idAvion < 0 || idAvion >= proximoIdAvion) return null;
+        return matriculasAviones[idAvion];
+    }
+
     public int getNumeroAviones() {
         return proximoIdAvion;
     }
     public int getContadorAsignaciones(int idAvion) {
         return contadorAsignaciones[idAvion];
     }
-
+    /**
+     * Devuelve el índice del avión asignado al vuelo, o -1 si no hay ninguno.
+     */
+    public int getAvionAsignado(int idVuelo) {
+        if (idVuelo < 0 || idVuelo >= avionAsignadoPorVuelo.length) return -1;
+        return avionAsignadoPorVuelo[idVuelo];
+    }
 
 }

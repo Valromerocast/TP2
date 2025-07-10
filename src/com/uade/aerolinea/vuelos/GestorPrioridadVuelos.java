@@ -70,19 +70,19 @@ public class GestorPrioridadVuelos {
      * Procesa (desencola) el siguiente vuelo de mayor prioridad.
      * Imprime sus datos y lo elimina de la cola.
      */
-    public void procesarSiguienteVuelo() {
+    public int procesarSiguienteVuelo() {
         if (colaVuelos.isEmpty()) {
             System.out.println("No hay vuelos en la cola.");
-            return;
+            return -1;
         }
-        int id = colaVuelos.getElement();
+        int id   = colaVuelos.getElement();
         int prio = colaVuelos.getPriority();
         colaVuelos.remove();
-
         System.out.println("Procesando vuelo " + id +
                 " [" + tipos[id] + "] " +
                 origenes[id] + "→" + destinos[id] +
                 " (prio=" + prio + ")");
+        return id;
     }
 
     /**
